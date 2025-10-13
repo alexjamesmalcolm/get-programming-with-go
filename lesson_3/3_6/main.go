@@ -65,18 +65,23 @@ func guessingGame(answer int) {
 		)
 		fmt.Println("Please enter another number within that range.")
 	}
-	var guess = generateRandomNumberInclusive(1, 100)
+	var guess = generateRandomNumberInclusive(minimum, maximum)
 	for guess != answer {
 		if guess > answer {
-			fmt.Println("")
+			fmt.Println("Guessed", guess, "but that was too high!")
+			maximum = guess - 1
+		} else {
+			fmt.Println("Guessed", guess, "but that was too low!")
+			minimum = guess + 1
 		}
+		guess = generateRandomNumberInclusive(minimum, maximum)
+		time.Sleep(time.Millisecond * 500)
 	}
 	fmt.Println("Your number is:", answer)
 }
 
 func main() {
-	// countdown()
-	// infinity()
-	// countdownWithFailureChance()
-	guessingGame(10)
+	var answer = generateRandomNumberInclusive(1, 100)
+	fmt.Println("The secret number that I'm thinking of is", answer)
+	guessingGame(answer)
 }
