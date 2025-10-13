@@ -44,9 +44,11 @@ func getDaysInMonth(year int, month int) int {
 var era = "AD"
 
 func main() {
-	year := generateRandomNumberInclusive(2025, 3025)
-	month := generateRandomNumberInclusive(1, 12)
-	daysInMonth := getDaysInMonth(year, month)
-	day := generateRandomNumberInclusive(1, daysInMonth)
-	fmt.Println(era, year, month, day)
+	for count := 10; count > 0; count-- {
+		year := generateRandomNumberInclusive(2025, 3025)
+		month := generateRandomNumberInclusive(1, 12)
+		daysInMonth := getDaysInMonth(year, month)
+		day := generateRandomNumberInclusive(1, daysInMonth)
+		fmt.Println(era, year, month, day)
+	}
 }
