@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 func valueOfRune(r rune) (int32, error) {
@@ -27,9 +28,28 @@ func vigenereDecipher(cipher string, keyword string) (string, error) {
 			shiftedChar += 26
 		}
 		decoded = append(decoded, shiftedChar)
-		fmt.Printf("%c - %c = %c\n", char, keywordChar, shiftedChar)
 	}
 	return string(decoded), nil
+}
+
+func vigenereCipher(message string, keyword string) (string, error) {
+	message = strings.ReplaceAll(strings.ToUpper(message), " ", "")
+	keywordRunes := []rune(keyword)
+	var cipher []rune
+	for i, char := range message {
+		keywordIndex := i % len(keywordRunes)
+		keywordChar := keywordRunes[keywordIndex]
+		valueOfKeywordChar, err := valueOfRune(keywordChar)
+		if err != nil {
+			return "", err
+		}
+		shiftedChar := char + valueOfKeywordChar
+		if shiftedChar > 'Z' {
+			shiftedChar -= 26
+		}
+		cipher = append(cipher, shiftedChar)
+	}
+	return string(cipher), nil
 }
 
 func main() {
@@ -43,4 +63,10 @@ func main() {
 		return
 	}
 	fmt.Println(cipherText, "decoded using keyword", keyword, "is:", decoded)
+
+	plainText := "your message goes here"
+	cipher, err := vigenereCipher(plainText, keyword)
+	fmt.Println(plainText, "encoded using keyword", keyword, "is:", cipher)
+	decoded, err = vigenereDecipher(cipher, keyword)
+	fmt.Println(cipher, "decoded using keyword", keyword, "is:", decoded)
 }
