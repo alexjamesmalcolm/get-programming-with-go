@@ -96,6 +96,17 @@ func (u Universe) Neighbors(x, y int) uint8 {
 	return living
 }
 
+// Next returns true if a cell should be alive next generation. It does not update the universe but just tells you what the future state should be. If the cell is currently alive and it has 2 or 3 neighbors then it should stay alive in the next generation, otherwise it will die. If the cell is currently dead but has exactly 3 live neighbors then it gets to become a live cell.
+func (u Universe) Next(x, y int) bool {
+	aliveNeighbors := u.Neighbors(x, y)
+	isCurrentlyAlive := u.Alive(x, y)
+	if isCurrentlyAlive {
+		return aliveNeighbors == 2 || aliveNeighbors == 3
+	} else {
+		return aliveNeighbors == 3
+	}
+}
+
 func main() {
 	universe := NewUniverse()
 	universe.Seed()
