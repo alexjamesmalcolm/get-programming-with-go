@@ -84,9 +84,9 @@ func (u Universe) Neighbors(x, y int) uint8 {
 		u.Alive(x+1, y-1),
 		u.Alive(x-1, y),
 		u.Alive(x+1, y),
-		u.Alive(x-1, y-1),
-		u.Alive(x, y-1),
-		u.Alive(x+1, y-1),
+		u.Alive(x-1, y+1),
+		u.Alive(x, y+1),
+		u.Alive(x+1, y+1),
 	}
 	for _, isAlive := range livingSlice {
 		if isAlive {
