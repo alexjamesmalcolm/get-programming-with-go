@@ -107,6 +107,15 @@ func (u Universe) Next(x, y int) bool {
 	}
 }
 
+// Step reads through Universe A while setting the cells in Universe B.
+func Step(a, b Universe) {
+	for x := range width {
+		for y := range height {
+			b[x][y] = a.Next(x, y)
+		}
+	}
+}
+
 func main() {
 	universe := NewUniverse()
 	universe.Seed()
