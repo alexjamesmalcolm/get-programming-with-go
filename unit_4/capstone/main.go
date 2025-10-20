@@ -6,7 +6,10 @@
 // generation, cells live or die based on the number of living neighbors.
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"math/rand"
+)
 
 const (
 	// width of the universe
@@ -43,7 +46,20 @@ func (u Universe) Show() {
 	}
 }
 
+func (u Universe) Seed() {
+	for y := range height {
+		for x := range width {
+			if rand.Intn(4) == 0 {
+				u[x][y] = true
+			} else {
+				u[x][y] = false
+			}
+		}
+	}
+}
+
 func main() {
 	universe := NewUniverse()
+	universe.Seed()
 	universe.Show()
 }
