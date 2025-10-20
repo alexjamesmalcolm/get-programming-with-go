@@ -9,13 +9,14 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"time"
 )
 
 const (
 	// width of the universe
 	width = 80
 	// height of the universe
-	height = 15
+	height = 16
 )
 
 type Universe [][]bool
@@ -61,7 +62,6 @@ func (u Universe) Seed() {
 // Alive wraps around the edges of the universe so the top is connected to the bottom and the left
 // is connected to the right at the edges.
 func (u Universe) Alive(x, y int) bool {
-	fmt.Println("Alive received", x, y)
 	if x < 0 {
 		x += width
 	} else {
@@ -107,6 +107,17 @@ func (u Universe) Next(x, y int) bool {
 	}
 }
 
+func (u Universe) DoesUniverseHaveLife() bool {
+	for x := range width {
+		for y := range height {
+			if u.Alive(x, y) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // Step reads through Universe A while setting the cells in Universe B.
 func Step(a, b Universe) {
 	for x := range width {
@@ -116,12 +127,20 @@ func Step(a, b Universe) {
 	}
 }
 
+func clearScreen() {
+	fmt.Printf("\033[H\n")
+}
+
 func main() {
-	universe := NewUniverse()
-	universe.Seed()
-	universe.Show()
-	fmt.Println(universe.Neighbors(10, 10))
-	fmt.Println(universe.Neighbors(0, 0))
-	fmt.Println(universe.Neighbors(80, 15))
-	fmt.Println(universe.Neighbors(200, 200))
+	a := NewUniverse()
+	a.Seed()
+	a.Show()
+	b := NewUniverse()
+	for a.DoesUniverseHaveLife() {
+		time.Sleep(time.Millisecond * 100)
+		Step(a, b)
+		a, b = b, a
+		a.Show()
+		clearScreen()
+	}
 }
