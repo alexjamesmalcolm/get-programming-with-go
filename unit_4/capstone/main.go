@@ -58,8 +58,50 @@ func (u Universe) Seed() {
 	}
 }
 
+// Alive wraps around the edges of the universe so the top is connected to the bottom and the left
+// is connected to the right at the edges.
+func (u Universe) Alive(x, y int) bool {
+	fmt.Println("Alive received", x, y)
+	if x < 0 {
+		x += width
+	} else {
+		x = x % width
+	}
+	if y < 0 {
+		y += height
+	} else {
+		y = y % height
+	}
+	return u[x][y]
+}
+
+// Neighbors counts the number of live neighbors for a given cell, from 0 to 8.
+func (u Universe) Neighbors(x, y int) uint8 {
+	var living uint8 = 0
+	livingSlice := []bool{
+		u.Alive(x-1, y-1),
+		u.Alive(x, y-1),
+		u.Alive(x+1, y-1),
+		u.Alive(x-1, y),
+		u.Alive(x+1, y),
+		u.Alive(x-1, y-1),
+		u.Alive(x, y-1),
+		u.Alive(x+1, y-1),
+	}
+	for _, isAlive := range livingSlice {
+		if isAlive {
+			living++
+		}
+	}
+	return living
+}
+
 func main() {
 	universe := NewUniverse()
 	universe.Seed()
 	universe.Show()
+	fmt.Println(universe.Neighbors(10, 10))
+	fmt.Println(universe.Neighbors(0, 0))
+	fmt.Println(universe.Neighbors(80, 15))
+	fmt.Println(universe.Neighbors(200, 200))
 }
