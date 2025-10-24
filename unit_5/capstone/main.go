@@ -331,7 +331,7 @@ func main() {
 				sleepDescriptions := sanctuary.bedTime()
 				for _, description := range sleepDescriptions {
 					fmt.Println(description)
-					time.Sleep(time.Millisecond * 300)
+					time.Sleep(time.Millisecond * 500)
 				}
 				fmt.Println("Everyone is asleep.")
 			case hour == sunrise:
@@ -339,7 +339,7 @@ func main() {
 				wakeUpDescription := sanctuary.alarmClock()
 				for _, description := range wakeUpDescription {
 					fmt.Println(description)
-					time.Sleep(time.Millisecond * 300)
+					time.Sleep(time.Millisecond * 500)
 				}
 			case hour > sunset && hour < sunrise:
 				fmt.Println(strings.Repeat(".", hour))
@@ -351,7 +351,7 @@ func main() {
 					fmt.Println(randomAnimal.Move())
 				}
 			}
-			time.Sleep(time.Second)
+			time.Sleep(time.Millisecond * 2000)
 		}
 	}
 }
