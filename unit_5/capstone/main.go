@@ -91,7 +91,10 @@ type Gopher struct {
 func (g Gopher) String() string { return "Gopher " + g.name }
 
 func (g *Gopher) Eat() string {
-	return fmt.Sprintf("%v digs up a potato and %v eats it!", g, g.SubjectPronoun())
+	if g.isUnderGround {
+		return fmt.Sprintf("While %v is digging through the earth %v finds a potato and eats it!", g, g.SubjectPronoun())
+	}
+	return fmt.Sprintf("While %v is walking around %v finds a dandelion and eats it!", g, g.SubjectPronoun())
 }
 
 func (g *Gopher) Move() string {
@@ -144,7 +147,10 @@ func (g *Gopher) Sleep() string {
 	return fmt.Sprintf("%v can't find %v tunnel home and sleeps in a bush.", g, g.PossessiveAdjective())
 }
 func (g *Gopher) WakeUp() string {
-	return fmt.Sprintf("%v is woken up by footsteps above %v tunnel.", g, g.PossessiveAdjective())
+	if g.isUnderGround {
+		return fmt.Sprintf("%v is woken up by footsteps above %v tunnel.", g, g.PossessiveAdjective())
+	}
+	return fmt.Sprintf("%v is woken up by the sunrise above %v.", g, g.ObjectPronoun())
 }
 
 type Cat struct {
