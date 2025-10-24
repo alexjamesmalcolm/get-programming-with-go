@@ -149,8 +149,10 @@ func (g Gopher) Move() string {
 
 // Sleep implements Animal.
 func (g Gopher) Sleep() string {
-	g.isUnderGround = true
-	return fmt.Sprintf("%v cozies up in %v tunnel home and falls fast asleep.", g, g.PossessiveAdjective())
+	if g.isUnderGround {
+		return fmt.Sprintf("%v cozies up in %v tunnel home and falls fast asleep.", g, g.PossessiveAdjective())
+	}
+	return fmt.Sprintf("%v can't find %v tunnel home and sleeps in a bush.", g, g.PossessiveAdjective())
 }
 
 // WakeUp implements Animal.
