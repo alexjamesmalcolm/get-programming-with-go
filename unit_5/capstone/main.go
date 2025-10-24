@@ -69,16 +69,16 @@ type Capybara struct {
 
 func (c Capybara) String() string { return "Capybara " + c.name }
 
-func (c *Capybara) Eat() string {
+func (c Capybara) Eat() string {
 	return fmt.Sprintf("%v ate a watermelon and very much enjoyed it.", c)
 }
-func (c *Capybara) Move() string {
+func (c Capybara) Move() string {
 	return fmt.Sprintf("%v sat and did nothing until %v jumped into the water and swam away very quickly.", c, c.SubjectPronoun())
 }
-func (c *Capybara) Sleep() string {
+func (c Capybara) Sleep() string {
 	return fmt.Sprintf("%v was too lazy to go to bed and fell asleep where %v was sitting.", c, c.SubjectPronoun())
 }
-func (c *Capybara) WakeUp() string {
+func (c Capybara) WakeUp() string {
 	return fmt.Sprintf("%v woke up and %v was very groggy.", c, c.SubjectPronoun())
 }
 
@@ -90,7 +90,7 @@ type Gopher struct {
 
 func (g Gopher) String() string { return "Gopher " + g.name }
 
-func (g *Gopher) Eat() string {
+func (g Gopher) Eat() string {
 	if g.isUnderGround {
 		return fmt.Sprintf("While %v is digging through the earth %v finds a potato and eats it!", g, g.SubjectPronoun())
 	}
@@ -140,13 +140,13 @@ func (g *Gopher) Move() string {
 	return description
 }
 
-func (g *Gopher) Sleep() string {
+func (g Gopher) Sleep() string {
 	if g.isUnderGround {
 		return fmt.Sprintf("%v cozies up in %v tunnel home and falls fast asleep.", g, g.PossessiveAdjective())
 	}
 	return fmt.Sprintf("%v can't find %v tunnel home and sleeps in a bush.", g, g.PossessiveAdjective())
 }
-func (g *Gopher) WakeUp() string {
+func (g Gopher) WakeUp() string {
 	if g.isUnderGround {
 		return fmt.Sprintf("%v is woken up by footsteps above %v tunnel.", g, g.PossessiveAdjective())
 	}
@@ -160,7 +160,7 @@ type Cat struct {
 
 func (c Cat) String() string { return "Cat " + c.name }
 
-func (c *Cat) Eat() string {
+func (c Cat) Eat() string {
 	switch rand.Intn(3) {
 	case 0: // Fish
 		return fmt.Sprintf("%v spotted a small fish swimming close to the surface of the water and nabbed it!", c)
@@ -170,13 +170,13 @@ func (c *Cat) Eat() string {
 		return fmt.Sprintf("%v spotted a mouse hiding behind the sofa and pounced on it and ate it.", c)
 	}
 }
-func (c *Cat) Move() string {
+func (c Cat) Move() string {
 	return fmt.Sprintf("%v slinks around the perimeter, pausing to make bird chirps as %v goes.", c, c.SubjectPronoun())
 }
-func (c *Cat) Sleep() string {
+func (c Cat) Sleep() string {
 	return fmt.Sprintf("%v has curled up into a fluffy ball for the night.", c)
 }
-func (c *Cat) WakeUp() string {
+func (c Cat) WakeUp() string {
 	return fmt.Sprintf("%v lets out a big yawn and does a big stretch and is ready for the day.", c)
 }
 
@@ -187,18 +187,18 @@ type BushBaby struct {
 
 func (b BushBaby) String() string { return "Bush baby " + b.name }
 
-func (b *BushBaby) Eat() string {
+func (b BushBaby) Eat() string {
 	return fmt.Sprintf("%v found a juicy bug and %v ate it.", b, b.SubjectPronoun())
 }
 
-func (b *BushBaby) Move() string {
+func (b BushBaby) Move() string {
 	return fmt.Sprintf("%v jumps from tree to tree.", b)
 }
 
-func (b *BushBaby) Sleep() string {
+func (b BushBaby) Sleep() string {
 	return fmt.Sprintf("%v cuddles up with the other bush babies in their nest and falls asleep.", b)
 }
-func (b *BushBaby) WakeUp() string {
+func (b BushBaby) WakeUp() string {
 	return fmt.Sprintf("%v wakes up with the sunrise as soon as it hits the canopy of leaves.", b)
 }
 
@@ -234,22 +234,22 @@ func (sanctuary AnimalSanctuary) alarmClock() []string {
 }
 
 func (sanctuary AnimalSanctuary) getAllAnimals() []Animal {
-	animals := make([]Animal, 0,
+	var animals []Animal = make(
+		[]Animal,
+		0,
 		len(sanctuary.capybaras)+len(sanctuary.gophers)+len(sanctuary.cats)+len(sanctuary.bushBabies),
 	)
-
-	// IMPORTANT: take addresses of slice elements by index (not the range variable)
-	for i := range sanctuary.capybaras {
-		animals = append(animals, &sanctuary.capybaras[i])
+	for _, capybara := range sanctuary.capybaras {
+		animals = append(animals, capybara)
 	}
 	for i := range sanctuary.gophers {
 		animals = append(animals, &sanctuary.gophers[i])
 	}
-	for i := range sanctuary.cats {
-		animals = append(animals, &sanctuary.cats[i])
+	for _, cat := range sanctuary.cats {
+		animals = append(animals, cat)
 	}
-	for i := range sanctuary.bushBabies {
-		animals = append(animals, &sanctuary.bushBabies[i])
+	for _, bushBaby := range sanctuary.bushBabies {
+		animals = append(animals, bushBaby)
 	}
 	return animals
 }
