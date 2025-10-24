@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 )
 
@@ -85,7 +86,7 @@ func (c Capybara) Sleep() string {
 
 // WakeUp implements Animal.
 func (c Capybara) WakeUp() string {
-	return fmt.Sprintf("%v woke up and %v was very groggy", c, c.SubjectPronoun())
+	return fmt.Sprintf("%v woke up and %v was very groggy.", c, c.SubjectPronoun())
 }
 
 type Gopher struct {
@@ -148,6 +149,7 @@ func (g Gopher) Move() string {
 
 // Sleep implements Animal.
 func (g Gopher) Sleep() string {
+	g.isUnderGround = true
 	return fmt.Sprintf("%v cozies up in %v tunnel home and falls fast asleep.", g, g.PossessiveAdjective())
 }
 
@@ -166,23 +168,34 @@ type Cat struct {
 }
 
 // String implements Animal.
-func (c Cat) String() string {
-}
+func (c Cat) String() string { return "Cat " + c.name }
 
 // Eat implements Animal.
 func (c Cat) Eat() string {
+	switch rand.Intn(3) {
+	case 0: // Fish
+		return fmt.Sprintf("%v spotted a small fish swimming close to the surface of the water and nabbed it!", c)
+	case 1: // Milk
+		return fmt.Sprintf("Someone left out a warm bowl of milk and %v has found it.", c)
+	default: // Mouse
+		return fmt.Sprintf("%v spotted a mouse hiding behind the sofa and pounced on it and ate it.", c)
+	}
+
 }
 
 // Move implements Animal.
 func (c Cat) Move() string {
+	return fmt.Sprintf("%v slinks around the perimeter, pausing to make bird chirps as %v goes.", c, c.SubjectPronoun())
 }
 
 // Sleep implements Animal.
 func (c Cat) Sleep() string {
+	return fmt.Sprintf("%v has curled up into a fluffy ball for the night.", c)
 }
 
 // WakeUp implements Animal.
 func (c Cat) WakeUp() string {
+	return fmt.Sprintf("%v lets out a big yawn and does a big stretch and is ready for the day.", c)
 }
 
 type BushBaby struct {
@@ -195,18 +208,22 @@ func (b BushBaby) String() string { return "Bush baby " + b.name }
 
 // Eat implements Animal.
 func (b BushBaby) Eat() string {
+	return fmt.Sprintf("%v found a juicy bug and %v ate it.", b, b.Gender.SubjectPronoun())
 }
 
 // Move implements Animal.
 func (b BushBaby) Move() string {
+	return fmt.Sprintf("%v jumps from tree to tree.", b)
 }
 
 // Sleep implements Animal.
 func (b BushBaby) Sleep() string {
+	return fmt.Sprintf("%v cuddles up with the other bush babies in their nest and falls asleep.", b)
 }
 
 // WakeUp implements Animal.
 func (b BushBaby) WakeUp() string {
+	return fmt.Sprintf("%v wakes up with the sunrise as soon as it hits the canopy of leaves.", b)
 }
 
 type AnimalSanctuary struct {
@@ -223,7 +240,7 @@ func (sanctuary AnimalSanctuary) pickRandomAnimal() Animal {
 }
 func (sanctuary AnimalSanctuary) bedTime() []string {
 	animals := sanctuary.getAllAnimals()
-	var sleepDescriptions []string = make([]string, len(animals))
+	var sleepDescriptions []string = make([]string, 0, len(animals))
 	for _, animal := range animals {
 		sleepDescriptions = append(sleepDescriptions, animal.Sleep())
 	}
@@ -231,7 +248,7 @@ func (sanctuary AnimalSanctuary) bedTime() []string {
 }
 func (sanctuary AnimalSanctuary) alarmClock() []string {
 	animals := sanctuary.getAllAnimals()
-	var wakingUpDescriptions []string = make([]string, len(animals))
+	var wakingUpDescriptions []string = make([]string, 0, len(animals))
 	for _, animal := range animals {
 		wakingUpDescriptions = append(wakingUpDescriptions, animal.WakeUp())
 	}
@@ -240,6 +257,7 @@ func (sanctuary AnimalSanctuary) alarmClock() []string {
 func (sanctuary AnimalSanctuary) getAllAnimals() []Animal {
 	var animals []Animal = make(
 		[]Animal,
+		0,
 		len(sanctuary.capybaras)+len(sanctuary.gophers)+len(sanctuary.cats)+len(sanctuary.bushBabies),
 	)
 	for _, capybara := range sanctuary.capybaras {
@@ -262,23 +280,67 @@ func main() {
 		sunset  = 0
 		sunrise = 8
 	)
-	sanctuary := AnimalSanctuary{}
+	male := Gender{true}
+	female := Gender{false}
+	sanctuary := AnimalSanctuary{
+		capybaras: []Capybara{
+			{
+				Gender: male,
+				name:   "Pickles",
+			},
+			{
+				Gender: female,
+				name:   "Dumpling",
+			},
+		},
+		gophers: []Gopher{
+			{
+				Gender:        female,
+				name:          "Daisy",
+				isUnderGround: true,
+			},
+		},
+		cats: []Cat{
+			{
+				Gender: male,
+				name:   "Milo",
+			},
+			{
+				Gender: female,
+				name:   "Mia",
+			},
+		},
+		bushBabies: []BushBaby{
+			{
+				Gender: male,
+				name:   "Pip",
+			},
+			{
+				Gender: female,
+				name:   "Dottie",
+			},
+		},
+	}
 	for range 3 {
 		for hour := range 24 {
 			switch {
 			case hour == sunset:
+				fmt.Println("Bedtime!")
 				sleepDescriptions := sanctuary.bedTime()
 				for _, description := range sleepDescriptions {
 					fmt.Println(description)
-					time.Sleep(time.Millisecond * 100)
+					time.Sleep(time.Millisecond * 300)
 				}
+				fmt.Println("Everyone is asleep.")
 			case hour == sunrise:
+				fmt.Println("Sunrise!")
 				wakeUpDescription := sanctuary.alarmClock()
 				for _, description := range wakeUpDescription {
 					fmt.Println(description)
-					time.Sleep(time.Millisecond * 100)
+					time.Sleep(time.Millisecond * 300)
 				}
 			case hour > sunset && hour < sunrise:
+				fmt.Println(strings.Repeat(".", hour))
 			default:
 				randomAnimal := sanctuary.pickRandomAnimal()
 				if rand.Intn(2) == 1 {
@@ -287,7 +349,7 @@ func main() {
 					fmt.Println(randomAnimal.Move())
 				}
 			}
-			time.Sleep(1)
+			time.Sleep(time.Second)
 		}
 	}
 }
