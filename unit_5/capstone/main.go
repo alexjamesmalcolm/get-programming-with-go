@@ -268,6 +268,7 @@ func main() {
 		},
 		gophers: []Gopher{
 			{Gender: female, name: "Daisy", isUnderGround: true},
+			{Gender: male, name: "Turnip", isUnderGround: false},
 		},
 		cats: []Cat{
 			{Gender: male, name: "Milo"},
@@ -289,14 +290,17 @@ func main() {
 					time.Sleep(500 * time.Millisecond)
 				}
 				fmt.Println("Everyone is asleep.")
+				time.Sleep(1000 * time.Millisecond)
 			case hour == sunrise:
 				fmt.Println("Sunrise!")
 				for _, d := range sanctuary.alarmClock() {
 					fmt.Println(d)
 					time.Sleep(500 * time.Millisecond)
 				}
+				time.Sleep(1000 * time.Millisecond)
 			case hour > sunset && hour < sunrise:
-				fmt.Println(strings.Repeat(".", hour))
+				fmt.Println(strings.Repeat(".", sunrise-hour))
+				time.Sleep(1000 * time.Millisecond)
 			default:
 				a := sanctuary.pickRandomAnimal()
 				if rand.Intn(2) == 1 {
@@ -304,8 +308,8 @@ func main() {
 				} else {
 					fmt.Println(a.Move())
 				}
+				time.Sleep(5 * time.Second)
 			}
-			time.Sleep(2 * time.Second)
 		}
 	}
 }
