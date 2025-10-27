@@ -59,9 +59,16 @@ func validDigit(digit int8) bool {
 
 func main() {
 	var g Grid
-	err := g.Set(0, 0, 10)
+	err := g.Set(10, 0, 10)
 	if err != nil {
-		fmt.Printf("An error occurred: %v.\n", err)
+		if errs, ok := err.(SudokuError); ok {
+			fmt.Printf("%d error(s) occurred:\n", len(errs))
+			for _, e := range errs {
+				fmt.Printf("- %v\n", e)
+			}
+		} else {
+			fmt.Printf("An error occurred: %v.\n", err)
+		}
 		os.Exit(1)
 	}
 	fmt.Println(g)
