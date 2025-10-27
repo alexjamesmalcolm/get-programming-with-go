@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 )
 
 const rows, columns = 9, 9
@@ -13,15 +14,30 @@ var (
 	ErrDigit  = errors.New("invalid digit")
 )
 
+type SudokuError []error
+
+// Error returns one or more errors separated by commas.
+func (se SudokuError) Error() string {
+	var s []string
+	for _, err := range se {
+		s = append(s, err.Error())
+	}
+	return strings.Join(s, ", ")
+}
+
 // Grid is a Sudoku grid
 type Grid [rows][columns]int8
 
 func (g Grid) Set(row, column int, digit int8) error {
+	var errs SudokuError
 	if !inBounds(row, column) {
-		return ErrBounds
+		errs = append(errs, ErrBounds)
 	}
 	if !validDigit(digit) {
-		return ErrDigit
+		errs = append(errs, ErrDigit)
+	}
+	if len(errs) > 0 {
+		return errs
 	}
 	g[row][column] = digit
 	return nil
