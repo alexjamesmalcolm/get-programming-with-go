@@ -71,7 +71,11 @@ func (grid Grid) String() string {
 	for row := range rows {
 		var line = make([]string, 0, 11)
 		for column := range columns {
-			line = append(line, fmt.Sprintf("%d", grid[row][column]))
+			char := fmt.Sprintf("%d", grid[row][column])
+			if char == "0" {
+				char = "•"
+			}
+			line = append(line, char)
 			if (column+1)%3 == 0 && column+1 != columns {
 				line = append(line, "|")
 			}
@@ -153,6 +157,18 @@ func getCoordinatesOfColumn(coord Coordinate) (column [9]Coordinate) {
 	return column
 }
 func getCoordinatesOfSubregion(coord Coordinate) (subregion [9]Coordinate) {
+	// regionCoordinate rows and columns can range 0-2 and refer to the overall subregions
+	// coordinate amongst the other subregions.
+	var regionCoordinate = Coordinate{
+		row:    (coord.row / 3) * 3,
+		column: (coord.column / 3) * 3,
+	}
+	for i := range subregion {
+		subregion[i] = Coordinate{
+			row:    regionCoordinate.row + i/3,
+			column: regionCoordinate.column + i%3,
+		}
+	}
 	return subregion
 }
 
@@ -190,6 +206,18 @@ func NewSudoku(initial Grid) Sudoku {
 	return Sudoku{initial, current}
 }
 
+type SafeSudokuSetter struct {
+	s   Sudoku
+	err error
+}
+
+func (safeSudoku *SafeSudokuSetter) SafeSet(coord Coordinate, digit int8) {
+	if safeSudoku.err != nil {
+		return
+	}
+	safeSudoku.err = safeSudoku.s.Set(coord, digit)
+}
+
 func main() {
 	initialGrid := Grid{
 		{5, 3, 0, 0, 7, 0, 0, 0, 0},
@@ -202,7 +230,29 @@ func main() {
 		{0, 0, 0, 4, 1, 9, 0, 0, 5},
 		{0, 0, 0, 0, 8, 0, 0, 7, 9},
 	}
-	s := NewSudoku(initialGrid)
-	s.Set(Coordinate{0, 1}, 3)
-	fmt.Println(s)
+	s := SafeSudokuSetter{s: NewSudoku(initialGrid)}
+	s.SafeSet(Coordinate{5, 2}, 3)
+	s.SafeSet(Coordinate{6, 0}, 9)
+	s.SafeSet(Coordinate{5, 6}, 8)
+	s.SafeSet(Coordinate{2, 6}, 5)
+	s.SafeSet(Coordinate{7, 1}, 8)
+	s.SafeSet(Coordinate{7, 2}, 7)
+	s.SafeSet(Coordinate{1, 1}, 7)
+	s.SafeSet(Coordinate{2, 8}, 7)
+	s.SafeSet(Coordinate{4, 2}, 6)
+	s.SafeSet(Coordinate{7, 6}, 6)
+	s.SafeSet(Coordinate{8, 6}, 1)
+	s.SafeSet(Coordinate{6, 2}, 1)
+	s.SafeSet(Coordinate{2, 0}, 1)
+	s.SafeSet(Coordinate{7, 0}, 2)
+	s.SafeSet(Coordinate{7, 7}, 3)
+	s.SafeSet(Coordinate{6, 8}, 4)
+	s.SafeSet(Coordinate{8, 0}, 3)
+	s.SafeSet(Coordinate{8, 1}, 4)
+	s.SafeSet(Coordinate{8, 2}, 5)
+	if s.err != nil {
+		fmt.Println(s.err)
+		return
+	}
+	fmt.Println(s.s)
 }
