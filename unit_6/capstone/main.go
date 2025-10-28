@@ -5,6 +5,8 @@ import (
 	"strings"
 )
 
+// Coordinate gives a row, column location.
+// It can be flexibly used as either Sudoku coordinates (0-8, 0-8) or subregion coordinates (0-2, 0-2).
 type Coordinate struct{ row, column int }
 
 type SudokuError []error
@@ -57,21 +59,19 @@ const rows, columns = 9, 9
 
 type Grid [rows][columns]int8
 type Sudoku struct {
+	// initial was the given numbers that make the puzzle unique
 	initial Grid
-	current Grid
+	// Grid reflects the current state of the Sudoku board
+	Grid
 }
 
-func (sudoku Sudoku) String() string {
-	return sudoku.current.String()
-}
-
-func (grid Grid) String() string {
+func (g Grid) String() string {
 	var s = make([]string, 0, 11)
 	horizontalRule := strings.Repeat("-", 11)
 	for row := range rows {
 		var line = make([]string, 0, 11)
 		for column := range columns {
-			char := fmt.Sprintf("%d", grid[row][column])
+			char := fmt.Sprintf("%d", g[row][column])
 			if char == "0" {
 				char = "•"
 			}
@@ -88,19 +88,16 @@ func (grid Grid) String() string {
 	return strings.Join(s, "\n")
 }
 
-func (grid Grid) Get(coord Coordinate) (digit int8, err error) {
+func (g Grid) Get(coord Coordinate) (digit int8, err error) {
 	if inBounds(coord) {
-		digit = grid[coord.row][coord.column]
+		digit = g[coord.row][coord.column]
 	} else {
 		err = ErrBounds(coord)
 	}
 	return digit, err
 }
-func (sudoku Sudoku) Get(coord Coordinate) (digit int8, err error) {
-	return sudoku.current.Get(coord)
-}
 
-func (sudoku *Sudoku) Set(coord Coordinate, digit int8) error {
+func (s *Sudoku) Set(coord Coordinate, digit int8) error {
 	var errs SudokuError
 	if !inBounds(coord) {
 		errs = append(errs, ErrBounds(coord))
@@ -111,25 +108,26 @@ func (sudoku *Sudoku) Set(coord Coordinate, digit int8) error {
 	if len(errs) > 0 {
 		return errs
 	}
-	if !sudoku.current.validByColumn(coord, digit) {
+	if !s.validByColumn(coord, digit) {
 		errs = append(errs, ErrVertical(digit))
 	}
-	if !sudoku.current.validByRow(coord, digit) {
+	if !s.validByRow(coord, digit) {
 		errs = append(errs, ErrHorizontal(digit))
 	}
-	if !sudoku.current.validBySubregion(coord, digit) {
+	if !s.validBySubregion(coord, digit) {
 		errs = append(errs, ErrSubregion(digit))
 	}
-	if sudoku.initial[coord.row][coord.column] != 0 {
+	if s.initial[coord.row][coord.column] != 0 {
 		errs = append(errs, ErrInitial(coord))
 	}
 	if len(errs) > 0 {
 		return errs
 	}
-	sudoku.current[coord.row][coord.column] = digit
+	s.Grid[coord.row][coord.column] = digit
 	return nil
 }
 
+// inBounds reports whether the coordinate is within a 9x9 Sudoku grid.
 func inBounds(coord Coordinate) bool {
 	if coord.row < 0 || coord.row > rows {
 		return false
@@ -140,23 +138,35 @@ func inBounds(coord Coordinate) bool {
 	return true
 }
 
+// validDigit tests if the supplied digit is 1 to 9 inclusive.
 func validDigit(digit int8) bool {
 	return digit >= 1 && digit <= 9
 }
 
-func getCoordinatesOfRow(coord Coordinate) (row [9]Coordinate) {
+// getCoordinatesOfRow returns the nine coordinates that make up the row that the provided
+// coordinate resides in.
+func getCoordinatesOfRow(coord Coordinate) [9]Coordinate {
+	var row [9]Coordinate
 	for column := range columns {
 		row[column] = Coordinate{coord.row, column}
 	}
 	return row
 }
-func getCoordinatesOfColumn(coord Coordinate) (column [9]Coordinate) {
+
+// getCoordinatesOfColumn returns the nine coordinates that make up the column that the provided
+// coordinate resides in.
+func getCoordinatesOfColumn(coord Coordinate) [9]Coordinate {
+	var column [9]Coordinate
 	for row := range rows {
 		column[row] = Coordinate{row, coord.column}
 	}
 	return column
 }
-func getCoordinatesOfSubregion(coord Coordinate) (subregion [9]Coordinate) {
+
+// getCoordinatesOfSubregion returns the nine coordinates that make up the subregion that the
+// provided coordinate resides in.
+func getCoordinatesOfSubregion(coord Coordinate) [9]Coordinate {
+	var subregion [9]Coordinate
 	// regionCoordinate rows and columns can range 0-2 and refer to the overall subregions
 	// coordinate amongst the other subregions.
 	var regionCoordinate = Coordinate{
@@ -172,13 +182,14 @@ func getCoordinatesOfSubregion(coord Coordinate) (subregion [9]Coordinate) {
 	return subregion
 }
 
-func (grid Grid) validByConstraintGroup(
+// validByCoordinateGroup reports whether the provided digit can be placed at the Coordinate by checking against the coordinate group
+func (g Grid) validByCoordinateGroup(
 	coord Coordinate,
 	digit int8,
-	getter func(coord Coordinate) [9]Coordinate,
+	getCoordinateGroup func(coord Coordinate) [9]Coordinate,
 ) bool {
-	for _, comparisonCoord := range getter(coord) {
-		comparisonDigit, err := grid.Get(comparisonCoord)
+	for _, comparisonCoord := range getCoordinateGroup(coord) {
+		comparisonDigit, err := g.Get(comparisonCoord)
 		if err != nil {
 			return false
 		}
@@ -189,16 +200,16 @@ func (grid Grid) validByConstraintGroup(
 	return true
 }
 
-func (grid Grid) validByRow(coord Coordinate, digit int8) bool {
-	return grid.validByConstraintGroup(coord, digit, getCoordinatesOfRow)
+func (g Grid) validByRow(coord Coordinate, digit int8) bool {
+	return g.validByCoordinateGroup(coord, digit, getCoordinatesOfRow)
 }
 
-func (grid Grid) validByColumn(coord Coordinate, digit int8) bool {
-	return grid.validByConstraintGroup(coord, digit, getCoordinatesOfColumn)
+func (g Grid) validByColumn(coord Coordinate, digit int8) bool {
+	return g.validByCoordinateGroup(coord, digit, getCoordinatesOfColumn)
 }
 
-func (grid Grid) validBySubregion(coord Coordinate, digit int8) bool {
-	return grid.validByConstraintGroup(coord, digit, getCoordinatesOfSubregion)
+func (g Grid) validBySubregion(coord Coordinate, digit int8) bool {
+	return g.validByCoordinateGroup(coord, digit, getCoordinatesOfSubregion)
 }
 
 func NewSudoku(initial Grid) Sudoku {
@@ -207,15 +218,15 @@ func NewSudoku(initial Grid) Sudoku {
 }
 
 type SafeSudokuSetter struct {
-	s   Sudoku
-	err error
+	err    error
+	sudoku Sudoku
 }
 
-func (safeSudoku *SafeSudokuSetter) SafeSet(coord Coordinate, digit int8) {
-	if safeSudoku.err != nil {
+func (ss *SafeSudokuSetter) SafeSet(coord Coordinate, digit int8) {
+	if ss.err != nil {
 		return
 	}
-	safeSudoku.err = safeSudoku.s.Set(coord, digit)
+	ss.err = ss.sudoku.Set(coord, digit)
 }
 
 func main() {
@@ -230,7 +241,7 @@ func main() {
 		{0, 0, 0, 4, 1, 9, 0, 0, 5},
 		{0, 0, 0, 0, 8, 0, 0, 7, 9},
 	}
-	s := SafeSudokuSetter{s: NewSudoku(initialGrid)}
+	s := SafeSudokuSetter{sudoku: NewSudoku(initialGrid)}
 	s.SafeSet(Coordinate{5, 2}, 3)
 	s.SafeSet(Coordinate{6, 0}, 9)
 	s.SafeSet(Coordinate{5, 6}, 8)
@@ -254,5 +265,5 @@ func main() {
 		fmt.Println(s.err)
 		return
 	}
-	fmt.Println(s.s)
+	fmt.Println(s.sudoku)
 }
