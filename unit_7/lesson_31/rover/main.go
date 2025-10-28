@@ -23,7 +23,7 @@ func (rd RoverDriver) drive() {
 	pos := image.Point{0, 0}
 	direction := image.Point{1, 0}
 	updateInterval := 250 * time.Millisecond
-	nextMove := time.After(updateInterval)
+	nextMove := time.NewTicker(updateInterval)
 	for {
 		select {
 		case c := <-rd.commandChannel:
@@ -40,10 +40,9 @@ func (rd RoverDriver) drive() {
 				}
 			}
 			log.Printf("new direction %v", direction)
-		case <-nextMove:
+		case <-nextMove.C:
 			pos = pos.Add(direction)
 			log.Printf("moved to %v", pos)
-			nextMove = time.After(updateInterval)
 		}
 	}
 }
