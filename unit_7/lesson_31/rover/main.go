@@ -11,6 +11,8 @@ type command int
 const (
 	left  = command(0)
 	right = command(1)
+	start = command(2)
+	stop  = command(3)
 )
 
 // RoverDriver drives a rover around the surface of Mars.
@@ -22,6 +24,7 @@ type RoverDriver struct {
 func (rd RoverDriver) drive() {
 	pos := image.Point{0, 0}
 	direction := image.Point{1, 0}
+	speed := 0
 	updateInterval := 250 * time.Millisecond
 	nextMove := time.NewTicker(updateInterval)
 	for {
@@ -38,10 +41,14 @@ func (rd RoverDriver) drive() {
 					X: -direction.Y,
 					Y: direction.X,
 				}
+			case stop:
+				speed = 0
+			case start:
+				speed = 1
 			}
-			log.Printf("new direction %v", direction)
+			log.Printf("facing %v at speed %v", direction, speed)
 		case <-nextMove.C:
-			pos = pos.Add(direction)
+			pos = pos.Add(direction.Mul(speed))
 			log.Printf("moved to %v", pos)
 		}
 	}
@@ -57,6 +64,16 @@ func (rd RoverDriver) Right() {
 	rd.commandChannel <- right
 }
 
+// Start increases the speed to full
+func (rd RoverDriver) Start() {
+	rd.commandChannel <- start
+}
+
+// Stop brings the rover to a stop
+func (rd RoverDriver) Stop() {
+	rd.commandChannel <- stop
+}
+
 func NewRoverDriver() *RoverDriver {
 	r := &RoverDriver{commandChannel: make(chan command)}
 	go r.drive()
@@ -65,9 +82,17 @@ func NewRoverDriver() *RoverDriver {
 
 func main() {
 	rd := NewRoverDriver()
-	time.Sleep(5 * time.Second)
-	rd.Left()
-	time.Sleep(5 * time.Second)
-	rd.Left()
-	time.Sleep(5 * time.Second)
+	rd.Right()
+	time.Sleep(time.Second)
+	rd.Start()
+	time.Sleep(10 * time.Second)
+	rd.Stop()
+	time.Sleep(time.Second)
+	rd.Right()
+	time.Sleep(time.Second)
+	rd.Right()
+	time.Sleep(time.Second)
+	rd.Start()
+	time.Sleep(10 * time.Second)
+
 }
