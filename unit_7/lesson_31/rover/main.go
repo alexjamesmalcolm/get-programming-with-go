@@ -1,25 +1,59 @@
 package main
 
 import (
-	"fmt"
 	"image"
+	"log"
 	"time"
 )
 
-func worker() {
-	pos := image.Point{10, 10}
+type command int
+
+const (
+	left  = command(0)
+	right = command(1)
+)
+
+// RoverDriver drives a rover around the surface of Mars.
+type RoverDriver struct {
+	commandChannel chan command
+}
+
+func (rd RoverDriver) drive() {
+	pos := image.Point{0, 0}
 	direction := image.Point{1, 0}
-	next := time.After(time.Second)
+	updateInterval := 250 * time.Millisecond
+	nextMove := time.After(updateInterval)
 	for {
 		select {
-		case <-next:
+		case c := <-rd.commandChannel:
+			switch c {
+			case left:
+				direction = image.Point{
+					X: direction.Y,
+					Y: -direction.X,
+				}
+			case right:
+				direction = image.Point{
+					X: -direction.Y,
+					Y: direction.X,
+				}
+			}
+			log.Printf("new direction %v", direction)
+		case <-nextMove:
 			pos = pos.Add(direction)
-			fmt.Println("current position is", pos)
-			next = time.After(time.Second)
+			log.Printf("moved to %v", pos)
+			nextMove = time.After(updateInterval)
 		}
 	}
 }
+
+func NewRoverDriver() *RoverDriver {
+	r := &RoverDriver{commandChannel: make(chan command)}
+	go r.drive()
+	return r
+}
+
 func main() {
-	go worker()
+	NewRoverDriver()
 	time.Sleep(10 * time.Second)
 }
