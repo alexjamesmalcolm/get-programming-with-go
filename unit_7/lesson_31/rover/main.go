@@ -18,6 +18,7 @@ type RoverDriver struct {
 	commandChannel chan command
 }
 
+// drive is responsible for driving the rover. It is expected to be started in a goroutine.
 func (rd RoverDriver) drive() {
 	pos := image.Point{0, 0}
 	direction := image.Point{1, 0}
@@ -47,6 +48,16 @@ func (rd RoverDriver) drive() {
 	}
 }
 
+// Left turns the rover left (90° counterclockwise)
+func (rd RoverDriver) Left() {
+	rd.commandChannel <- left
+}
+
+// Right turns the rover right (90° clockwise)
+func (rd RoverDriver) Right() {
+	rd.commandChannel <- right
+}
+
 func NewRoverDriver() *RoverDriver {
 	r := &RoverDriver{commandChannel: make(chan command)}
 	go r.drive()
@@ -54,6 +65,10 @@ func NewRoverDriver() *RoverDriver {
 }
 
 func main() {
-	NewRoverDriver()
-	time.Sleep(10 * time.Second)
+	rd := NewRoverDriver()
+	time.Sleep(5 * time.Second)
+	rd.Left()
+	time.Sleep(5 * time.Second)
+	rd.Left()
+	time.Sleep(5 * time.Second)
 }
