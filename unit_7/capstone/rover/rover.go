@@ -19,6 +19,7 @@ const (
 
 // RoverDriver drives a rover around the surface of Mars.
 type RoverDriver struct {
+	name           string
 	commandChannel chan command
 	location       *mars.Occupier
 }
@@ -49,23 +50,23 @@ func (rd *RoverDriver) drive() {
 				isMoving = true
 			}
 			if isMoving {
-				log.Printf("facing %v and moving", direction)
+				log.Printf("%v facing %v and moving", rd.name, direction)
 			} else {
-				log.Printf("facing %v and stopped", direction)
+				log.Printf("%v facing %v and stopped", rd.name, direction)
 			}
 		case <-nextMove.C:
 			if isMoving {
 				wasAbleToMove := rd.location.Move(rd.location.Point().Add(direction))
 				if !wasAbleToMove {
 					if rand.Intn(2) == 0 {
-						log.Printf("got stuck so turning left")
+						log.Printf("%v got stuck so turning left", rd.name)
 						go rd.Left()
 					} else {
-						log.Printf("got stuck so turning right")
+						log.Printf("%v got stuck so turning right", rd.name)
 						go rd.Right()
 					}
 				} else {
-					log.Printf("moved to %v", rd.location.Point())
+					log.Printf("%v moved to %v", rd.name, rd.location.Point())
 				}
 			}
 		}
@@ -92,12 +93,13 @@ func (rd *RoverDriver) Stop() {
 	rd.commandChannel <- stop
 }
 
-func NewRoverDriver(g *mars.MarsGrid, p image.Point) *RoverDriver {
+func NewRoverDriver(name string, g *mars.MarsGrid, p image.Point) *RoverDriver {
 	occupier := g.Occupy(p)
 	if occupier == nil {
 		return nil
 	}
 	r := &RoverDriver{
+		name:           name,
 		commandChannel: make(chan command),
 		location:       occupier,
 	}
