@@ -69,7 +69,7 @@ func (g *MarsGrid) Occupy(p image.Point) *Occupier {
 	if g.cells[p.X][p.Y].occupier != nil {
 		return nil
 	}
-	g.cells[p.X][p.Y].occupier = &Occupier{grid: g}
+	g.cells[p.X][p.Y].occupier = &Occupier{grid: g, location: p}
 	return g.cells[p.X][p.Y].occupier
 }
 
@@ -82,13 +82,8 @@ func (g *MarsGrid) move(o *Occupier, to image.Point) bool {
 	if g.cells[to.X][to.Y].occupier != nil {
 		return false
 	}
-	for x := range g.Width() {
-		for y := range g.Height() {
-			if g.cells[x][y].occupier == o {
-				g.cells[x][y].occupier = nil
-			}
-		}
-	}
+	from := o.location
+	g.cells[from.X][from.Y].occupier = nil
 	g.cells[to.X][to.Y].occupier = o
 	return true
 }
@@ -121,13 +116,21 @@ func NewMarsGrid(width, height int) *MarsGrid {
 // Occupier represents an occupied cell in the grid.
 // It may be used concurrently by different goroutines.
 type Occupier struct {
-	// Location image.Point
-	grid *MarsGrid
+	location image.Point
+	grid     *MarsGrid
+}
+
+func (o *Occupier) Point() image.Point {
+	return o.location
 }
 
 // Move moves the occupier to a different cell in the grid. It reports whether the move was
 // successful. It might fail because it was trying to move outside the grid or because the cell
 // it's trying to move into is occupied. If it fails, the occupier remains in the same place.
 func (o *Occupier) Move(p image.Point) bool {
-	return o.grid.move(o, p)
+	didMove := o.grid.move(o, p)
+	if didMove {
+		o.location = p
+	}
+	return didMove
 }

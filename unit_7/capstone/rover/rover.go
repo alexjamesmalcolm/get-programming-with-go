@@ -1,6 +1,7 @@
 package rover
 
 import (
+	"capstone/mars"
 	"image"
 	"log"
 	"time"
@@ -18,13 +19,13 @@ const (
 // RoverDriver drives a rover around the surface of Mars.
 type RoverDriver struct {
 	commandChannel chan command
+	location       *mars.Occupier
 }
 
 // drive is responsible for driving the rover. It is expected to be started in a goroutine.
-func (rd RoverDriver) drive() {
-	pos := image.Point{0, 0}
+func (rd *RoverDriver) drive() {
 	direction := image.Point{1, 0}
-	speed := 0
+	isMoving := false
 	updateInterval := 250 * time.Millisecond
 	nextMove := time.NewTicker(updateInterval)
 	for {
@@ -42,40 +43,58 @@ func (rd RoverDriver) drive() {
 					Y: direction.X,
 				}
 			case stop:
-				speed = 0
+				isMoving = false
 			case start:
-				speed = 1
+				isMoving = true
 			}
-			log.Printf("facing %v at speed %v", direction, speed)
+			if isMoving {
+				log.Printf("facing %v and moving", direction)
+			} else {
+				log.Printf("facing %v and stopped", direction)
+			}
 		case <-nextMove.C:
-			pos = pos.Add(direction.Mul(speed))
-			log.Printf("moved to %v", pos)
+			if isMoving {
+				wasAbleToMove := rd.location.Move(rd.location.Point().Add(direction))
+				if !wasAbleToMove {
+					log.Printf("forced to come to a stop\n")
+					isMoving = false
+				} else {
+					log.Printf("moved to %v", rd.location.Point())
+				}
+			}
 		}
 	}
 }
 
 // Left turns the rover left (90° counterclockwise)
-func (rd RoverDriver) Left() {
+func (rd *RoverDriver) Left() {
 	rd.commandChannel <- left
 }
 
 // Right turns the rover right (90° clockwise)
-func (rd RoverDriver) Right() {
+func (rd *RoverDriver) Right() {
 	rd.commandChannel <- right
 }
 
 // Start increases the speed to full
-func (rd RoverDriver) Start() {
+func (rd *RoverDriver) Start() {
 	rd.commandChannel <- start
 }
 
 // Stop brings the rover to a stop
-func (rd RoverDriver) Stop() {
+func (rd *RoverDriver) Stop() {
 	rd.commandChannel <- stop
 }
 
-func NewRoverDriver() *RoverDriver {
-	r := &RoverDriver{commandChannel: make(chan command)}
+func NewRoverDriver(g *mars.MarsGrid, p image.Point) *RoverDriver {
+	occupier := g.Occupy(p)
+	if occupier == nil {
+		return nil
+	}
+	r := &RoverDriver{
+		commandChannel: make(chan command),
+		location:       occupier,
+	}
 	go r.drive()
 	return r
 }

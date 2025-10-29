@@ -2,39 +2,18 @@ package main
 
 import (
 	"capstone/mars"
-	"fmt"
+	"capstone/rover"
 	"image"
 )
 
 func main() {
-	grid := mars.NewMarsGrid(4, 3)
-	grid.PrintLifeSigns()
-	grid.PrintOccupiers()
-	occupier := grid.Occupy(image.Point{1, 1})
-	if occupier == nil {
-		fmt.Println("Expected occupier but got nil")
-		return
+	grid := mars.NewMarsGrid(10, 10)
+	driver1 := rover.NewRoverDriver(grid, image.Point{1, 5})
+	driver2 := rover.NewRoverDriver(grid, image.Point{1, 7})
+	driver1.Start()
+	driver2.Start()
+	for {
+		select {}
 	}
-	fmt.Println()
-	grid.PrintOccupiers()
-
-	secondOccupier := grid.Occupy(image.Point{1, 2})
-	if secondOccupier == nil {
-		fmt.Println("Expected second occupier but got nil")
-	}
-	fmt.Println()
-	grid.PrintOccupiers()
-
-	didMove := occupier.Move(image.Point{2, 2})
-
-	if didMove {
-		fmt.Println("We were able to move the original occupier to (2, 2)")
-	} else {
-		fmt.Println("We were not able to move the original occupier")
-	}
-	grid.PrintOccupiers()
-
-	// secondOccupier = grid.Occupy(image.Point{2, 2})
-	// fmt.Println("Expecting to be nil:", secondOccupier)
 
 }
