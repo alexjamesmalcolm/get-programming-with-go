@@ -73,8 +73,8 @@ func (g *MarsGrid) Occupy(p image.Point) *Occupier {
 	return g.cells[p.X][p.Y].occupier
 }
 
-func (g *MarsGrid) move(o *Occupier, to image.Point) bool {
-	if o == nil || !g.isInBounds(to) {
+func (g *MarsGrid) move(from image.Point, to image.Point) bool {
+	if !g.isInBounds(to) {
 		return false
 	}
 	g.mu.Lock()
@@ -82,9 +82,11 @@ func (g *MarsGrid) move(o *Occupier, to image.Point) bool {
 	if g.cells[to.X][to.Y].occupier != nil {
 		return false
 	}
-	from := o.location
+	if g.cells[from.X][from.Y].occupier == nil {
+		return false
+	}
+	g.cells[to.X][to.Y].occupier = g.cells[from.X][from.Y].occupier
 	g.cells[from.X][from.Y].occupier = nil
-	g.cells[to.X][to.Y].occupier = o
 	return true
 }
 
@@ -127,10 +129,10 @@ func (o *Occupier) Point() image.Point {
 // Move moves the occupier to a different cell in the grid. It reports whether the move was
 // successful. It might fail because it was trying to move outside the grid or because the cell
 // it's trying to move into is occupied. If it fails, the occupier remains in the same place.
-func (o *Occupier) Move(p image.Point) bool {
-	didMove := o.grid.move(o, p)
+func (o *Occupier) Move(to image.Point) bool {
+	didMove := o.grid.move(o.location, to)
 	if didMove {
-		o.location = p
+		o.location = to
 	}
 	return didMove
 }
