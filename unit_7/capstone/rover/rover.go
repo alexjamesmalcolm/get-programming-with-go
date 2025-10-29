@@ -4,6 +4,7 @@ import (
 	"capstone/mars"
 	"image"
 	"log"
+	"math/rand"
 	"time"
 )
 
@@ -56,8 +57,13 @@ func (rd *RoverDriver) drive() {
 			if isMoving {
 				wasAbleToMove := rd.location.Move(rd.location.Point().Add(direction))
 				if !wasAbleToMove {
-					log.Printf("forced to come to a stop\n")
-					isMoving = false
+					if rand.Intn(2) == 0 {
+						log.Printf("got stuck so turning left")
+						go rd.Left()
+					} else {
+						log.Printf("got stuck so turning right")
+						go rd.Right()
+					}
 				} else {
 					log.Printf("moved to %v", rd.location.Point())
 				}
