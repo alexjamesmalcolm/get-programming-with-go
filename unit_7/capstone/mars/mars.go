@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image"
 	"math/rand"
+	"strings"
 	"sync"
 )
 
@@ -23,29 +24,42 @@ func (g *MarsGrid) Height() int {
 	return len(g.cells[0])
 }
 
-func (g *MarsGrid) PrintOccupiers() {
+func (g *MarsGrid) StringOccupiers() string {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
+	var lines []string
 	for y := range g.Height() {
+		var line []string
 		for x := range g.Width() {
 			if g.cells[x][y].occupier == nil {
-				fmt.Printf(".")
+				line = append(line, ".")
 			} else {
-				fmt.Printf("X")
+				line = append(line, "X")
 			}
 		}
-		fmt.Println()
+		lines = append(lines, strings.Join(line, ""))
 	}
+	return strings.Join(lines, "\n")
 }
-func (g *MarsGrid) PrintLifeSigns() {
+func (g *MarsGrid) PrintOccupiers() {
+	fmt.Println(g.StringOccupiers())
+}
+
+func (g *MarsGrid) StringLifeSigns() string {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
+	var lines []string
 	for y := range g.Height() {
+		var line []string
 		for x := range g.Width() {
-			fmt.Printf("%4d", g.cells[x][y].groundData.LifeSigns)
+			line = append(line, fmt.Sprintf("%4d", g.cells[x][y].groundData.LifeSigns))
 		}
-		fmt.Println()
+		lines = append(lines, strings.Join(line, ""))
 	}
+	return strings.Join(lines, "\n")
+}
+func (g *MarsGrid) PrintLifeSigns() {
+	fmt.Println(g.StringLifeSigns())
 }
 
 type SensorData struct {
