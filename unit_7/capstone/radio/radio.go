@@ -152,6 +152,8 @@ func (r *Radio) dataRateDelay(message Message) {
 }
 
 func (r *Radio) lightSpeedDelay(receiver *Radio) {
+	// The 100x in lightSpeed is just to make the simulation faster.
+
 	const lightSpeed = 100 * 299.792 // km/ms
 	distance := r.Distancer.Distance(receiver.Distancer)
 	ms := float64(distance) / lightSpeed
