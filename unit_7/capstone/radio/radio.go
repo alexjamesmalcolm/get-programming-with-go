@@ -4,6 +4,9 @@ import (
 	"capstone/mars"
 	"fmt"
 	"log"
+	"sync"
+	"time"
+	"unsafe"
 )
 
 /*
@@ -37,46 +40,134 @@ How do I model a radio?
 */
 
 type Message struct {
-	callSign string
-	data     mars.SensorData
+	time         time.Time
+	callSign     string
+	destination  string
+	data         mars.SensorData
+	retransmits  uint8
+	broadcasters []string
+}
+
+func (m Message) hasBroadcast(callSign string) bool {
+	for _, b := range m.broadcasters {
+		if callSign == b {
+			return true
+		}
+	}
+	return false
+}
+
+func (m Message) Hash() string {
+	return fmt.Sprintf("%v %v %v", m.callSign, m.time, m.data)
 }
 
 type Buffer struct {
 	buffer []Message
 }
 
+var allRadiosMutex sync.RWMutex
 var allRadios []*Radio = make([]*Radio, 0)
 
 type Antenna struct {
-	SignalRange int
-	Distancer
+	// DataRate is the number of bytes that can be sent per second
+	DataRate       uint
+	SignalRange    uint
+	Distancer      Distancer
+	broadcastMutex sync.Mutex
 }
 
 type Distancer interface {
-	Distance(other Distancer) int
+	Distance(other Distancer) uint
 }
 
 type Radio struct {
-	callSign string
-	receiver Receiver
-	Antenna
+	callSign         string
+	receivingChannel chan Message
+	inBufferMutex    sync.Mutex
+	inBuffer         map[string]Message
+	*Antenna
 }
 
-func (r *Radio) SendMessage(data mars.SensorData) {
+func (r *Radio) Inbox() []Message {
+	r.inBufferMutex.Lock()
+	defer r.inBufferMutex.Unlock()
+	var buffer []Message = make([]Message, 0)
+	for _, message := range r.inBuffer {
+		buffer = append(buffer, message)
+	}
+	fmt.Printf("%v - inbox has %v messages in it\n", r.callSign, len(buffer))
+	r.inBuffer = make(map[string]Message)
+	return buffer
+}
+
+func (r *Radio) SendData(destination string, data mars.SensorData) {
+	r.broadcastMessage(Message{
+		time:         time.Now(),
+		callSign:     r.callSign,
+		broadcasters: []string{r.callSign},
+		destination:  destination,
+		data:         data,
+		retransmits:  5,
+	})
+}
+
+func (r *Radio) broadcastMessage(message Message) {
 	log.Printf("%v transmitting", r.callSign)
+	r.dataRateDelay(message)
+	message.broadcasters = append(message.broadcasters, r.callSign)
 	for _, other := range r.getRadiosInRange() {
-		log.Printf("%v is in range of %v", other.callSign, r.callSign)
-		other.receiver.Receive(Message{
-			callSign: r.callSign,
-			data:     data,
-		})
+		log.Printf("%v - hopefully %v will receive", r.callSign, other.callSign)
+		go r.sendMessageWithDelays(message, other)
+	}
+}
+
+func (r *Radio) dataRateDelay(message Message) {
+	r.broadcastMutex.Lock()
+	defer r.broadcastMutex.Unlock()
+	size := uint(unsafe.Sizeof(message))
+	ms := 1000 * float64(size) / float64(r.DataRate)
+	log.Printf("%v - broadcast datarate is %v b/s so it'll take %v seconds to transmit a %v byte message", r.callSign, r.DataRate, ms/1000, size)
+	time.Sleep(time.Duration(ms) * time.Millisecond)
+}
+
+func (r *Radio) lightSpeedDelay(receiver *Radio) {
+	const lightSpeed = 100 * 299.792 // km/ms
+	distance := r.Distancer.Distance(receiver.Distancer)
+	ms := float64(distance) / lightSpeed
+	log.Printf("%v - lightspeed delay will be %v milliseconds to get to %v", r.callSign, ms, receiver.callSign)
+	time.Sleep(time.Duration(ms) * time.Millisecond)
+}
+
+func (r *Radio) sendMessageWithDelays(message Message, receiver *Radio) {
+	r.lightSpeedDelay(receiver)
+	log.Printf("%v - after long wait %v should have received a message", r.callSign, receiver.callSign)
+	receiver.receivingChannel <- message
+}
+
+func (r *Radio) listen() {
+	for message := range r.receivingChannel {
+		log.Printf("%v - received message %v", r.callSign, message)
+		if message.destination == r.callSign {
+			// Sweet this message was meant for us! Let's add it to our incoming buffer
+			r.inBufferMutex.Lock()
+			r.inBuffer[message.Hash()] = message
+			r.inBufferMutex.Unlock()
+		} else if message.hasBroadcast(r.callSign) {
+			continue
+		} else if message.retransmits > 0 {
+			message.retransmits -= 1
+			go r.broadcastMessage(message)
+		}
+		// If this message was meant for someone else, how can we send it and not have it bounce endlessly?
 	}
 }
 
 func (r *Radio) getRadiosInRange() []*Radio {
+	allRadiosMutex.RLock()
+	defer allRadiosMutex.RUnlock()
 	radios := make([]*Radio, 0)
 	for i := range allRadios {
-		distance := r.Distance(allRadios[i])
+		distance := r.Distancer.Distance(allRadios[i].Distancer)
 		if r != allRadios[i] && distance <= r.SignalRange && distance <= allRadios[i].SignalRange {
 			radios = append(radios, allRadios[i])
 		}
@@ -88,18 +179,18 @@ type Receiver interface {
 	Receive(message Message)
 }
 
-type Speaker struct{}
-
-func (s Speaker) Receive(message Message) {
-	fmt.Printf("Received from %v the data %v\n", message.callSign, message.data)
-}
-
-func NewRadio(callSign string, antenna Antenna, receiver Receiver) *Radio {
+// NewRadio returns a new radio.
+// It may be used concurrently by different goroutines.
+func NewRadio(callSign string, antenna *Antenna) *Radio {
+	allRadiosMutex.Lock()
+	defer allRadiosMutex.Unlock()
 	radio := &Radio{
-		callSign: callSign,
-		receiver: receiver,
-		Antenna:  antenna,
+		callSign:         callSign,
+		Antenna:          antenna,
+		receivingChannel: make(chan Message),
+		inBuffer:         make(map[string]Message),
 	}
+	go radio.listen()
 	allRadios = append(allRadios, radio)
 	return radio
 }
