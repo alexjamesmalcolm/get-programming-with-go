@@ -40,29 +40,61 @@ How do I model a radio?
 */
 
 type Message struct {
-	time         time.Time
-	callSign     string
-	destination  string
-	data         mars.SensorData
-	retransmits  uint8
-	broadcasters []string
-}
-
-func (m Message) hasBroadcast(callSign string) bool {
-	for _, b := range m.broadcasters {
-		if callSign == b {
-			return true
-		}
-	}
-	return false
+	time        time.Time
+	callSign    string
+	destination string
+	data        mars.SensorData
 }
 
 func (m Message) Hash() string {
 	return fmt.Sprintf("%v %v %v", m.callSign, m.time, m.data)
 }
 
+func (m Message) String() string {
+	return fmt.Sprintf(
+		"Callsign: %v - Signs of life %v at (%v, %v)",
+		m.callSign,
+		m.data.LifeSigns,
+		m.data.Location.X,
+		m.data.Location.Y,
+	)
+}
+
 type Buffer struct {
-	buffer []Message
+	mu     sync.Mutex
+	buffer map[string]Message
+}
+
+func (b *Buffer) Add(message Message) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.buffer[message.Hash()] = message
+}
+func (b *Buffer) Pop() []Message {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	contents := make([]Message, 0)
+	for hash, message := range b.buffer {
+		contents = append(contents, message)
+		delete(b.buffer, hash)
+	}
+	return contents
+}
+
+func (b *Buffer) Contains(message Message) bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	for hash := range b.buffer {
+		if hash == message.Hash() {
+			return true
+		}
+	}
+	return false
+}
+func (b *Buffer) DumpOlderThan(t time.Time) {}
+
+func NewBuffer() *Buffer {
+	return &Buffer{buffer: make(map[string]Message)}
 }
 
 var allRadiosMutex sync.RWMutex
@@ -71,52 +103,41 @@ var allRadios []*Radio = make([]*Radio, 0)
 type Antenna struct {
 	// DataRate is the number of bytes that can be sent per second
 	DataRate       uint
-	SignalRange    uint
+	SignalRange    float64
 	Distancer      Distancer
 	broadcastMutex sync.Mutex
 }
 
 type Distancer interface {
-	Distance(other Distancer) uint
+	Distance(other Distancer) float64
 }
 
 type Radio struct {
 	callSign         string
 	receivingChannel chan Message
-	inBufferMutex    sync.Mutex
-	inBuffer         map[string]Message
+	inBuffer         Buffer
+	outBuffer        Buffer
 	*Antenna
 }
 
 func (r *Radio) Inbox() []Message {
-	r.inBufferMutex.Lock()
-	defer r.inBufferMutex.Unlock()
-	var buffer []Message = make([]Message, 0)
-	for _, message := range r.inBuffer {
-		buffer = append(buffer, message)
-	}
-	fmt.Printf("%v - inbox has %v messages in it\n", r.callSign, len(buffer))
-	r.inBuffer = make(map[string]Message)
-	return buffer
+	return r.inBuffer.Pop()
 }
 
 func (r *Radio) SendData(destination string, data mars.SensorData) {
 	r.broadcastMessage(Message{
-		time:         time.Now(),
-		callSign:     r.callSign,
-		broadcasters: []string{r.callSign},
-		destination:  destination,
-		data:         data,
-		retransmits:  5,
+		time:        time.Now(),
+		callSign:    r.callSign,
+		destination: destination,
+		data:        data,
 	})
 }
 
 func (r *Radio) broadcastMessage(message Message) {
 	log.Printf("%v transmitting", r.callSign)
+	r.outBuffer.Add(message)
 	r.dataRateDelay(message)
-	message.broadcasters = append(message.broadcasters, r.callSign)
 	for _, other := range r.getRadiosInRange() {
-		log.Printf("%v - hopefully %v will receive", r.callSign, other.callSign)
 		go r.sendMessageWithDelays(message, other)
 	}
 }
@@ -126,7 +147,7 @@ func (r *Radio) dataRateDelay(message Message) {
 	defer r.broadcastMutex.Unlock()
 	size := uint(unsafe.Sizeof(message))
 	ms := 1000 * float64(size) / float64(r.DataRate)
-	log.Printf("%v - broadcast datarate is %v b/s so it'll take %v seconds to transmit a %v byte message", r.callSign, r.DataRate, ms/1000, size)
+	// log.Printf("%v - broadcast datarate is %v b/s so it'll take %v seconds to transmit a %v byte message", r.callSign, r.DataRate, ms/1000, size)
 	time.Sleep(time.Duration(ms) * time.Millisecond)
 }
 
@@ -134,13 +155,13 @@ func (r *Radio) lightSpeedDelay(receiver *Radio) {
 	const lightSpeed = 100 * 299.792 // km/ms
 	distance := r.Distancer.Distance(receiver.Distancer)
 	ms := float64(distance) / lightSpeed
-	log.Printf("%v - lightspeed delay will be %v milliseconds to get to %v", r.callSign, ms, receiver.callSign)
+	// log.Printf("%v - lightspeed delay will be %v milliseconds to get to %v", r.callSign, ms, receiver.callSign)
 	time.Sleep(time.Duration(ms) * time.Millisecond)
 }
 
 func (r *Radio) sendMessageWithDelays(message Message, receiver *Radio) {
 	r.lightSpeedDelay(receiver)
-	log.Printf("%v - after long wait %v should have received a message", r.callSign, receiver.callSign)
+	// log.Printf("%v - after long wait %v should have received a message", r.callSign, receiver.callSign)
 	receiver.receivingChannel <- message
 }
 
@@ -148,14 +169,10 @@ func (r *Radio) listen() {
 	for message := range r.receivingChannel {
 		log.Printf("%v - received message %v", r.callSign, message)
 		if message.destination == r.callSign {
-			// Sweet this message was meant for us! Let's add it to our incoming buffer
-			r.inBufferMutex.Lock()
-			r.inBuffer[message.Hash()] = message
-			r.inBufferMutex.Unlock()
-		} else if message.hasBroadcast(r.callSign) {
+			r.inBuffer.Add(message)
+		} else if r.outBuffer.Contains(message) {
 			continue
-		} else if message.retransmits > 0 {
-			message.retransmits -= 1
+		} else {
 			go r.broadcastMessage(message)
 		}
 		// If this message was meant for someone else, how can we send it and not have it bounce endlessly?
@@ -188,7 +205,8 @@ func NewRadio(callSign string, antenna *Antenna) *Radio {
 		callSign:         callSign,
 		Antenna:          antenna,
 		receivingChannel: make(chan Message),
-		inBuffer:         make(map[string]Message),
+		inBuffer:         *NewBuffer(),
+		outBuffer:        *NewBuffer(),
 	}
 	go radio.listen()
 	allRadios = append(allRadios, radio)

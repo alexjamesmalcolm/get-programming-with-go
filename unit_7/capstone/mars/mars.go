@@ -63,6 +63,7 @@ func (g *MarsGrid) PrintLifeSigns() {
 }
 
 type SensorData struct {
+	Location  image.Point
 	LifeSigns int
 }
 
@@ -104,6 +105,12 @@ func (g *MarsGrid) move(from image.Point, to image.Point) bool {
 	return true
 }
 
+func (g *MarsGrid) getSensorData(p image.Point) SensorData {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.cells[p.X][p.Y].groundData
+}
+
 func (g *MarsGrid) isInBounds(p image.Point) bool {
 	if p.X < 0 || p.X >= g.Width() {
 		return false
@@ -120,7 +127,10 @@ func NewMarsGrid(width, height int) *MarsGrid {
 		cells = append(cells, make([]cell, height))
 		for y := range height {
 			cells[x][y] = cell{
-				groundData: SensorData{LifeSigns: rand.Intn(1001)},
+				groundData: SensorData{
+					LifeSigns: rand.Intn(1001),
+					Location:  image.Point{x, y},
+				},
 			}
 		}
 	}
@@ -149,4 +159,8 @@ func (o *Occupier) Move(to image.Point) bool {
 		o.location = to
 	}
 	return didMove
+}
+
+func (o *Occupier) GetSensorData() SensorData {
+	return o.grid.getSensorData(o.location)
 }
